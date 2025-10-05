@@ -13,31 +13,6 @@ class TokenDatabase {
 		$this->table_name = $wpdb->prefix . 'personal_access_tokens';
 	}
 
-	public function createTable() {
-		global $wpdb;
-
-		$charset_collate = $wpdb->get_charset_collate();
-
-		$sql = "CREATE TABLE IF NOT EXISTS {$this->table_name} (
-            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-            tokenable_type varchar(255) NOT NULL,
-            tokenable_id bigint(20) UNSIGNED NOT NULL,
-            name varchar(255) NOT NULL,
-            token varchar(64) NOT NULL,
-            abilities text,
-            last_used_at datetime DEFAULT NULL,
-            expires_at datetime DEFAULT NULL,
-            created_at datetime NOT NULL,
-            updated_at datetime NOT NULL,
-            PRIMARY KEY (id),
-            UNIQUE KEY token (token),
-            KEY tokenable (tokenable_type, tokenable_id)
-        ) $charset_collate;";
-
-		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-		dbDelta($sql);
-	}
-
 	public function findToken($token) {
 		global $wpdb;
 
@@ -88,7 +63,7 @@ class TokenDatabase {
 			'plainTextToken' => $plain_token,
 			'accessToken'    => new PersonalAccessToken([
 				'id'             => $token_id,
-				'tokenable_type' => 'WP_User',
+				' tokenable_type' => 'WP_User',
 				'tokenable_id'   => $user_id,
 				'name'           => $name,
 				'token'          => $hashed_token,
