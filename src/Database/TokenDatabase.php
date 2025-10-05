@@ -1,0 +1,154 @@
+<?php
+
+namespace WPSPCORE\Sanctum\Database;
+
+use WPSPCORE\Sanctum\Models\PersonalAccessToken;
+
+class TokenDatabase {
+
+	private $table_name;
+
+	public function __construct() {
+		global $wpdb;
+		$this->table_name = $wpdb->prefix . 'personal_access_tokens';
+	}
+
+	public function createTable() {
+		global $wpdb;
+
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$sql = "CREATE TABLE IF NOT EXISTS {$this->table_name} (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            tokenable_type varchar(255) NOT NULL,
+            tokenable_id bigint(20) UNSIGNED NOT NULL,
+            name varchar(255) NOT NULL,
+            token varchar(64) NOT NULL,
+            abilities text,
+            last_used_at datetime DEFAULT NULL,
+            expires_at datetime DEFAULT NULL,
+            created_at datetime NOT NULL,
+            updated_at datetime NOT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY token (token),
+            KEY tokenable (tokenable_type, tokenable_id)
+        ) $charset_collate;";
+
+		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+		dbDelta($sql);
+	}
+
+	public function findToken($token) {
+		global $wpdb;
+
+		$hashed_token = hash('sha256', $token);
+
+		$result = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE token = %s LIMIT 1",
+				$hashed_token
+			),
+			ARRAY_A
+		);
+
+		if (!$result) {
+			return null;
+		}
+
+		return new PersonalAccessToken($result);
+	}
+
+	public function createToken($user_id, $name, $abilities = ['*'], $expires_at = null) {
+		global $wpdb;
+
+		$plain_token  = bin2hex(random_bytes(32));
+		$hashed_token = hash('sha256', $plain_token);
+
+		$now = current_time('mysql');
+
+		$wpdb->insert(
+			$this->table_name,
+			[
+				'tokenable_type' => 'WP_User',
+				'tokenable_id'   => $user_id,
+				'name'           => $name,
+				'token'          => $hashed_token,
+				'abilities'      => json_encode($abilities),
+				'expires_at'     => $expires_at,
+				'created_at'     => $now,
+				'updated_at'     => $now,
+			],
+			['%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s']
+		);
+
+		$token_id = $wpdb->insert_id;
+
+		return [
+			'token_id'       => $token_id,
+			'plainTextToken' => $plain_token,
+			'accessToken'    => new PersonalAccessToken([
+				'id'             => $token_id,
+				'tokenable_type' => 'WP_User',
+				'tokenable_id'   => $user_id,
+				'name'           => $name,
+				'token'          => $hashed_token,
+				'abilities'      => json_encode($abilities),
+				'expires_at'     => $expires_at,
+				'created_at'     => $now,
+				'updated_at'     => $now,
+			]),
+		];
+	}
+
+	public function updateLastUsed($token_id) {
+		global $wpdb;
+
+		$wpdb->update(
+			$this->table_name,
+			['last_used_at' => current_time('mysql')],
+			['id' => $token_id],
+			['%s'],
+			['%d']
+		);
+	}
+
+	public function deleteToken($token_id) {
+		global $wpdb;
+
+		return $wpdb->delete(
+			$this->table_name,
+			['id' => $token_id],
+			['%d']
+		);
+	}
+
+	public function getUserTokens($user_id) {
+		global $wpdb;
+
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE tokenable_id = %d AND tokenable_type = 'WP_User'",
+				$user_id
+			),
+			ARRAY_A
+		);
+
+		return array_map(function($row) {
+			return new PersonalAccessToken($row);
+		}, $results);
+	}
+
+	public function revokeAllTokens($user_id) {
+		global $wpdb;
+
+		return $wpdb->delete(
+			$this->table_name,
+			[
+				'tokenable_id'   => $user_id,
+				'tokenable_type' => 'WP_User',
+			],
+			['%d', '%s']
+		);
+	}
+
+}
