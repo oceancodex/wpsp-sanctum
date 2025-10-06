@@ -7,10 +7,8 @@ use WPSPCORE\Sanctum\Database\DBPersonalAccessToken;
 
 class AccessTokensGuard extends BaseGuard {
 
-	private $currentToken;
-	private $modelClass;
-
-	/** @var \WPSPCORE\Auth\Drivers\Database\DBAuthUser|\Illuminate\Database\Eloquent\Model|null */
+	private   $currentToken;
+	private   $modelClass;
 	protected $currentAccessToken;
 
 	public function afterInstanceConstruct() {
@@ -30,7 +28,7 @@ class AccessTokensGuard extends BaseGuard {
 		$tokenRaw   = $plainToken[1] ?? '';
 
 		if ($this->modelClass) {
-			$hashedToken          = hash('sha256', $plainToken[1]);
+			$hashedToken              = hash('sha256', $plainToken[1]);
 			$this->currentAccessToken = $this->modelClass::where('token', $hashedToken)->where('id', $tokenId)->first();
 		}
 		else {
