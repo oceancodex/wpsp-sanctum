@@ -9,33 +9,38 @@ use WPSPCORE\Sanctum\NewAccessToken;
 
 trait SanctumTokensTrait {
 
-	public $accessToken;
+	public function findByToken(string $plainToken): ?PersonalAccessTokenModel {
+		$plainToken  = explode('|', $plainToken);
+		$hashedToken = hash('sha256', $plainToken[1]);
+		return $this->tokens()->where('token', $hashedToken)->first();
+	}
 
-	public static function findByToken(string $plainToken): ?PersonalAccessTokenModel {
-		$hashedToken = hash('sha256', $plainToken);
-		return PersonalAccessTokenModel::where('token', $hashedToken)->first();
+	public function findByTokenName(string $name): ?PersonalAccessTokenModel {
+		return $this->tokens()->where('name', $name)->first();
 	}
 
 	public function createToken(string $name, array $abilities = ['*'], ?DateTimeInterface $expiresAt = null) {
-		$plainTextToken = $this->generateTokenString();
+		$exitsToken = $this->findByTokenName($name);
+		if (!$exitsToken) {
+			$plainToken = sprintf(
+				'%s%s%s',
+				$this->funcs->_config('sanctum.token_prefix', ''),
+				$tokenEntropy = Str::random(40),
+				hash('crc32b', $tokenEntropy)
+			);
 
-		$token = $this->tokens()->create([
-			'name'       => $name,
-			'token'      => hash('sha256', $plainTextToken),
-			'abilities'  => $abilities,
-			'expires_at' => $expiresAt,
-		]);
+			$token = $this->tokens()->create([
+				'name'       => $name,
+				'token'      => hash('sha256', $plainToken),
+				'abilities'  => $abilities,
+				'expires_at' => $expiresAt,
+			]);
 
-		return new NewAccessToken($token, $token->getKey() . '|' . $plainTextToken);
-	}
-
-	public function generateTokenString() {
-		return sprintf(
-			'%s%s%s',
-			wpsp_config('sanctum.token_prefix', ''),
-			$tokenEntropy = Str::random(40),
-			hash('crc32b', $tokenEntropy)
-		);
+			return new NewAccessToken($token, $token->getKey() . '|' . $plainToken);
+		}
+		else {
+			return null;
+		}
 	}
 
 	public function tokens() {
@@ -43,20 +48,19 @@ trait SanctumTokensTrait {
 	}
 
 	public function tokenCan(string $ability): bool {
-		return $this->accessToken && $this->accessToken->can($ability);
+		$plainToken = $this->funcs->_getBearerToken();
+		if (!$plainToken) {
+			return false;
+		}
+		$token = $this->findByToken($plainToken);
+		if (!$token) {
+			return false;
+		}
+		return $token->can($ability);
 	}
 
 	public function tokenCant(string $ability): bool {
 		return !$this->tokenCan($ability);
-	}
-
-	public function currentAccessToken() {
-		return $this->accessToken;
-	}
-
-	public function withAccessToken($accessToken) {
-		$this->accessToken = $accessToken;
-		return $this;
 	}
 
 	/*
@@ -64,7 +68,7 @@ trait SanctumTokensTrait {
 	 */
 
 	public function updateTokenLastUsed(int $tokenId): void {
-		PersonalAccessTokenModel::where('id', $tokenId)->update([
+		$this->tokens()->where('id', $tokenId)->update([
 			'last_used_at' => current_time('mysql'),
 		]);
 	}
@@ -81,21 +85,21 @@ trait SanctumTokensTrait {
 			return false;
 		}
 
-		return PersonalAccessTokenModel::destroy($tokenId) > 0;
+		return $this->tokens()->delete($tokenId) > 0;
 	}
 
 	public function revokeToken(int $tokenId): bool {
-		return PersonalAccessTokenModel::destroy($tokenId) > 0;
+		return $this->tokens()->delete($tokenId) > 0;
 	}
 
 	public function revokeAllTokens(): int {
 		$userId = $this->id ?? $this->ID;
-		return PersonalAccessTokenModel::where('tokenable_id', $userId)->delete();
+		return $this->tokens()->where('tokenable_id', $userId)->delete();
 	}
 
 	public function revokeTokenByName(string $name): int {
 		$userId = $this->id ?? $this->ID;
-		return PersonalAccessTokenModel::where('tokenable_id', $userId)
+		return $this->tokens()->where('tokenable_id', $userId)
 			->where('name', $name)
 			->delete();
 	}

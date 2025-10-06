@@ -6,19 +6,18 @@ use WPSP\app\Models\PersonalAccessTokenModel;
 
 class NewAccessToken {
 
+	public $plainToken;
 	public $accessToken;
 
-	public $plainTextToken;
-
-	public function __construct(PersonalAccessTokenModel $accessToken, string $plainTextToken) {
-		$this->accessToken    = $accessToken;
-		$this->plainTextToken = $plainTextToken;
+	public function __construct($accessToken, $plainToken) {
+		$this->accessToken = $accessToken;
+		$this->plainToken  = $plainToken;
 	}
 
 	public function toArray() {
 		return [
-			'accessToken'    => $this->accessToken,
-			'plainTextToken' => $this->plainTextToken,
+			'plain_token'  => $this->plainToken,
+			'access_token' => $this->accessToken,
 		];
 	}
 

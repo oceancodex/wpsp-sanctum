@@ -3,35 +3,41 @@
 namespace WPSPCORE\Sanctum;
 
 use WPSPCORE\Base\BaseInstances;
-use WPSPCORE\Sanctum\Guards\TokenGuard;
-use WPSPCORE\Sanctum\Guards\SessionGuard;
+use WPSPCORE\Sanctum\Guards\AccessTokensGuard;
+use WPSPCORE\Sanctum\Guards\SessionsGuard;
 
 class Sanctum extends BaseInstances {
 
-	private TokenGuard   $tokenGuard;
-	private SessionGuard $sessionGuard;
-	private              $currentGuard      = null;
-	private              $authenticatedUser = null;
+	private $tokenGuard;
+	private $sessionGuard;
+	private $currentGuard      = null;
+	private $authenticatedUser = null;
 
 	/*
 	 *
 	 */
 
 	public function afterInstanceConstruct(): void {
-		$this->tokenGuard   = new TokenGuard();
-		$this->sessionGuard = new SessionGuard();
-	}
-
-	/*
-	 *
-	 */
-
-	private function getTokenFromRequest(): ?string {
-		$header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-		if (preg_match('/Bearer\s+(.+)/i', $header, $matches)) {
-			return trim($matches[1]);
-		}
-		return null;
+		$this->tokenGuard   = new AccessTokensGuard(
+			$this->mainPath,
+			$this->rootNamespace,
+			$this->prefixEnv,
+			[
+				'provider'     => $this->customProperties['provider'],
+				'session_key'  => $this->customProperties['session_key'],
+				'guard_name'   => $this->customProperties['guard_name'],
+				'guard_config' => $this->customProperties['guard_config'],
+			]);
+		$this->sessionGuard = new SessionsGuard(
+			$this->mainPath,
+			$this->rootNamespace,
+			$this->prefixEnv,
+			[
+				'provider'     => $this->customProperties['provider'],
+				'session_key'  => $this->customProperties['session_key'],
+				'guard_name'   => $this->customProperties['guard_name'],
+				'guard_config' => $this->customProperties['guard_config'],
+			]);
 	}
 
 	/*
@@ -40,14 +46,14 @@ class Sanctum extends BaseInstances {
 
 	public function user() {
 		if ($this->authenticatedUser === null) {
-			$this->authenticate();
+			$this->attempt();
 		}
 		return $this->authenticatedUser;
 	}
 
 	public function check(): bool {
 		if ($this->authenticatedUser === null) {
-			$this->authenticate();
+			$this->attempt();
 		}
 		return $this->authenticatedUser !== null;
 	}
@@ -56,19 +62,25 @@ class Sanctum extends BaseInstances {
 	 *
 	 */
 
-	public function authenticate() {
-		// Try token first
-		$token = $this->getTokenFromRequest();
-		if ($token) {
+	public function attempt(array $credentials = []) {
+		$plainToken = $this->funcs->_getBearerToken();
+		if ($plainToken) {
 			$this->currentGuard      = 'token';
-			$this->authenticatedUser = $this->tokenGuard->authenticate($token);
-			return $this->authenticatedUser;
+			$this->tokenGuard        = $this->tokenGuard->attempt(['plain_token' => $plainToken]);
+			$this->authenticatedUser = $this->tokenGuard ? $this->tokenGuard->user() : null;
+			return $this->tokenGuard;
 		}
 
 		// Try session
+		if (!$credentials) {
+			$credentials             = [];
+			$credentials['login']    = $this->request->get('login');
+			$credentials['password'] = $this->request->get('password');
+		}
 		$this->currentGuard      = 'session';
-		$this->authenticatedUser = $this->sessionGuard->authenticate();
-		return $this->authenticatedUser;
+		$this->sessionGuard      = $this->sessionGuard->attempt($credentials);
+		$this->authenticatedUser = $this->sessionGuard ? $this->sessionGuard->user() : null;
+		return $this->sessionGuard;
 	}
 
 	/*
@@ -83,11 +95,11 @@ class Sanctum extends BaseInstances {
 		return $this->currentGuard === 'session';
 	}
 
-	public function getTokenGuard(): TokenGuard {
+	public function getTokenGuard(): AccessTokensGuard {
 		return $this->tokenGuard;
 	}
 
-	public function getSessionGuard(): SessionGuard {
+	public function getSessionGuard(): SessionsGuard {
 		return $this->sessionGuard;
 	}
 

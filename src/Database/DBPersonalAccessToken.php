@@ -2,13 +2,15 @@
 
 namespace WPSPCORE\Sanctum\Database;
 
-class DBPersonalAccessToken {
+use WPSPCORE\Base\BaseInstances;
+
+class DBPersonalAccessToken extends BaseInstances {
 
 	private $tableName;
 
-	public function __construct() {
+	public function afterInstanceConstruct() {
 		global $wpdb;
-		$this->tableName = $wpdb->prefix . 'wpsp_cm_personal_access_tokens';
+		$this->tableName = $wpdb->prefix . $this->funcs->_getAppShortName() . 'cm_personal_access_tokens';
 	}
 
 	public function findByToken(string $plainToken): ?array {
@@ -30,25 +32,25 @@ class DBPersonalAccessToken {
 		// 🔥 XÓA TOKEN CŨ CÓ CÙNG NAME
 		$this->deleteTokenByName($userId, $name);
 
-		$plainToken = bin2hex(random_bytes(40));
+		$plainToken  = bin2hex(random_bytes(40));
 		$hashedToken = hash('sha256', $plainToken);
 
 		$wpdb->insert($this->tableName, [
 			'tokenable_type' => 'User',
-			'tokenable_id' => $userId,
-			'name' => $name,
-			'token' => $hashedToken,
-			'abilities' => json_encode($abilities),
-			'expires_at' => $expiresAt,
-			'created_at' => current_time('mysql'),
-			'updated_at' => current_time('mysql'),
+			'tokenable_id'   => $userId,
+			'name'           => $name,
+			'token'          => $hashedToken,
+			'abilities'      => json_encode($abilities),
+			'expires_at'     => $expiresAt,
+			'created_at'     => current_time('mysql'),
+			'updated_at'     => current_time('mysql'),
 		]);
 
 		$tokenId = $wpdb->insert_id;
 
 		return [
-			'token' => $wpdb->get_row("SELECT * FROM {$this->tableName} WHERE id = {$tokenId}", ARRAY_A),
-			'plainTextToken' => $plainToken,
+			'plain_token'  => $plainToken,
+			'access_token' => $wpdb->get_row("SELECT * FROM {$this->tableName} WHERE id = {$tokenId}", ARRAY_A),
 		];
 	}
 
@@ -56,7 +58,7 @@ class DBPersonalAccessToken {
 		global $wpdb;
 		$wpdb->delete($this->tableName, [
 			'tokenable_id' => $userId,
-			'name' => $name,
+			'name'         => $name,
 		], ['%d', '%s']);
 	}
 
@@ -91,25 +93,26 @@ class DBPersonalAccessToken {
 			'tokenable_id' => $userId,
 		], ['%d']);
 
-		$plainToken = bin2hex(random_bytes(40));
+		$plainToken  = bin2hex(random_bytes(40));
 		$hashedToken = hash('sha256', $plainToken);
 
 		$wpdb->insert($this->tableName, [
 			'tokenable_type' => 'User',
-			'tokenable_id' => $userId,
-			'name' => $name,
-			'token' => $hashedToken,
-			'abilities' => json_encode($abilities),
-			'expires_at' => $expiresAt,
-			'created_at' => current_time('mysql'),
-			'updated_at' => current_time('mysql'),
+			'tokenable_id'   => $userId,
+			'name'           => $name,
+			'token'          => $hashedToken,
+			'abilities'      => json_encode($abilities),
+			'expires_at'     => $expiresAt,
+			'created_at'     => current_time('mysql'),
+			'updated_at'     => current_time('mysql'),
 		]);
 
 		$tokenId = $wpdb->insert_id;
 
 		return [
-			'token' => $wpdb->get_row("SELECT * FROM {$this->tableName} WHERE id = {$tokenId}", ARRAY_A),
-			'plainTextToken' => $plainToken,
+			'plain_token'  => $plainToken,
+			'access_token' => $wpdb->get_row("SELECT * FROM {$this->tableName} WHERE id = {$tokenId}", ARRAY_A),
 		];
 	}
+
 }
