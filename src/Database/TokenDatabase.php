@@ -10,18 +10,20 @@ class TokenDatabase {
 
 	public function __construct() {
 		global $wpdb;
-		$this->table_name = $wpdb->prefix . 'personal_access_tokens';
+		$this->table_name = 'wp_wpsp_cm_personal_access_tokens';
 	}
 
 	public function findToken($token) {
 		global $wpdb;
 
+		// QUAN TRỌNG: Hash plain token trước khi query
 		$hashed_token = hash('sha256', $token);
 
+		// Query database với hashed token
 		$result = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table_name} WHERE token = %s LIMIT 1",
-				$hashed_token
+				$hashed_token  // ← Sử dụng hashed token
 			),
 			ARRAY_A
 		);
@@ -63,7 +65,7 @@ class TokenDatabase {
 			'plainTextToken' => $plain_token,
 			'accessToken'    => new PersonalAccessToken([
 				'id'             => $token_id,
-				' tokenable_type' => 'WP_User',
+				'tokenable_type' => 'WP_User',
 				'tokenable_id'   => $user_id,
 				'name'           => $name,
 				'token'          => $hashed_token,

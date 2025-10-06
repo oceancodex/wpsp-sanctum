@@ -3,7 +3,8 @@
 namespace WPSPCORE\Sanctum;
 
 use WPSPCORE\Sanctum\Database\TokenDatabase;
-use WPSPCORE\Sanctum\Guards\SanctumGuard;
+use WPSPCORE\Sanctum\Guards\TokenGuard;
+use WPSPCORE\Sanctum\Guards\SessionGuard;
 
 class Sanctum {
 
@@ -15,7 +16,7 @@ class Sanctum {
 
 	private function __construct() {
 		$this->database     = new TokenDatabase();
-		$this->tokenGuard   = new SanctumGuard($this->database);
+		$this->tokenGuard   = new TokenGuard($this->database);
 		$this->sessionGuard = new SessionGuard();
 	}
 
@@ -27,9 +28,6 @@ class Sanctum {
 	}
 
 	public function init() {
-		// Create database table on activation
-		add_action('after_setup_theme', [$this, 'createTokenTable']);
-
 		// Hook into WordPress authentication
 		add_filter('determine_current_user', [$this, 'authenticate'], 10);
 
