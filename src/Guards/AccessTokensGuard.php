@@ -32,6 +32,7 @@ class AccessTokensGuard extends BaseGuard {
 			$this->currentAccessToken = $this->modelClass::where('token', $hashedToken)->where('id', $tokenId)->first();
 		}
 		else {
+			// TODO: Chưa xử lý lấy user từ token nếu không có model class.
 			$this->currentAccessToken = (new DBPersonalAccessToken)->findByToken($tokenRaw);
 		}
 
@@ -40,6 +41,7 @@ class AccessTokensGuard extends BaseGuard {
 
 	public function user() {
 		if (!$this->currentAccessToken) return null;
+		// TODO: Chưa xử lý lấy user từ token nếu không có model class.
 		return $this->currentAccessToken->tokenable()->first();
 	}
 

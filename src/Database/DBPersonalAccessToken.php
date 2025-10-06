@@ -15,14 +15,11 @@ class DBPersonalAccessToken extends BaseInstances {
 
 	public function findByToken(string $plainToken): ?array {
 		global $wpdb;
-
 		$hashedToken = hash('sha256', $plainToken);
-
 		$result = $wpdb->get_row($wpdb->prepare(
 			"SELECT * FROM {$this->tableName} WHERE token = %s LIMIT 1",
 			$hashedToken
 		), ARRAY_A);
-
 		return $result ?: null;
 	}
 
