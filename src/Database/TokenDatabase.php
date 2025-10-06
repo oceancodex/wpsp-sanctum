@@ -2,130 +2,114 @@
 
 namespace WPSPCORE\Sanctum\Database;
 
-use WPSPCORE\Sanctum\Models\PersonalAccessToken;
-
 class TokenDatabase {
 
-	private $table_name;
+	private $tableName;
 
 	public function __construct() {
 		global $wpdb;
-		$this->table_name = 'wp_wpsp_cm_personal_access_tokens';
+		$this->tableName = $wpdb->prefix . 'wpsp_cm_personal_access_tokens';
 	}
 
-	public function findToken($token) {
+	public function findByToken(string $plainToken): ?array {
 		global $wpdb;
 
-		// QUAN TRỌNG: Hash plain token trước khi query
-		$hashed_token = hash('sha256', $token);
+		$hashedToken = hash('sha256', $plainToken);
 
-		// Query database với hashed token
-		$result = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE token = %s LIMIT 1",
-				$hashed_token  // ← Sử dụng hashed token
-			),
-			ARRAY_A
-		);
+		$result = $wpdb->get_row($wpdb->prepare(
+			"SELECT * FROM {$this->tableName} WHERE token = %s LIMIT 1",
+			$hashedToken
+		), ARRAY_A);
 
-		if (!$result) {
-			return null;
-		}
-
-		return new PersonalAccessToken($result);
+		return $result ?: null;
 	}
 
-	public function createToken($user_id, $name, $abilities = ['*'], $expires_at = null) {
+	public function createToken(int $userId, string $name, array $abilities = ['*'], $expiresAt = null): array {
 		global $wpdb;
 
-		$plain_token  = bin2hex(random_bytes(32));
-		$hashed_token = hash('sha256', $plain_token);
+		// 🔥 XÓA TOKEN CŨ CÓ CÙNG NAME
+		$this->deleteTokenByName($userId, $name);
 
-		$now = current_time('mysql');
+		$plainToken = bin2hex(random_bytes(40));
+		$hashedToken = hash('sha256', $plainToken);
 
-		$wpdb->insert(
-			$this->table_name,
-			[
-				'tokenable_type' => 'WP_User',
-				'tokenable_id'   => $user_id,
-				'name'           => $name,
-				'token'          => $hashed_token,
-				'abilities'      => json_encode($abilities),
-				'expires_at'     => $expires_at,
-				'created_at'     => $now,
-				'updated_at'     => $now,
-			],
-			['%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s']
-		);
+		$wpdb->insert($this->tableName, [
+			'tokenable_type' => 'User',
+			'tokenable_id' => $userId,
+			'name' => $name,
+			'token' => $hashedToken,
+			'abilities' => json_encode($abilities),
+			'expires_at' => $expiresAt,
+			'created_at' => current_time('mysql'),
+			'updated_at' => current_time('mysql'),
+		]);
 
-		$token_id = $wpdb->insert_id;
+		$tokenId = $wpdb->insert_id;
 
 		return [
-			'token_id'       => $token_id,
-			'plainTextToken' => $plain_token,
-			'accessToken'    => new PersonalAccessToken([
-				'id'             => $token_id,
-				'tokenable_type' => 'WP_User',
-				'tokenable_id'   => $user_id,
-				'name'           => $name,
-				'token'          => $hashed_token,
-				'abilities'      => json_encode($abilities),
-				'expires_at'     => $expires_at,
-				'created_at'     => $now,
-				'updated_at'     => $now,
-			]),
+			'token' => $wpdb->get_row("SELECT * FROM {$this->tableName} WHERE id = {$tokenId}", ARRAY_A),
+			'plainTextToken' => $plainToken,
 		];
 	}
 
-	public function updateLastUsed($token_id) {
+	private function deleteTokenByName(int $userId, string $name): void {
 		global $wpdb;
-
-		$wpdb->update(
-			$this->table_name,
-			['last_used_at' => current_time('mysql')],
-			['id' => $token_id],
-			['%s'],
-			['%d']
-		);
+		$wpdb->delete($this->tableName, [
+			'tokenable_id' => $userId,
+			'name' => $name,
+		], ['%d', '%s']);
 	}
 
-	public function deleteToken($token_id) {
+	public function updateLastUsed(int $tokenId): void {
 		global $wpdb;
-
-		return $wpdb->delete(
-			$this->table_name,
-			['id' => $token_id],
-			['%d']
-		);
+		$wpdb->update($this->tableName, [
+			'last_used_at' => current_time('mysql'),
+		], ['id' => $tokenId]);
 	}
 
-	public function getUserTokens($user_id) {
+	public function deleteToken(int $tokenId): bool {
 		global $wpdb;
-
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE tokenable_id = %d AND tokenable_type = 'WP_User'",
-				$user_id
-			),
-			ARRAY_A
-		);
-
-		return array_map(function($row) {
-			return new PersonalAccessToken($row);
-		}, $results);
+		return (bool)$wpdb->delete($this->tableName, ['id' => $tokenId]);
 	}
 
-	public function revokeAllTokens($user_id) {
+	public function getUserTokens(int $userId): array {
 		global $wpdb;
 
-		return $wpdb->delete(
-			$this->table_name,
-			[
-				'tokenable_id'   => $user_id,
-				'tokenable_type' => 'WP_User',
-			],
-			['%d', '%s']
-		);
+		$results = $wpdb->get_results($wpdb->prepare(
+			"SELECT * FROM {$this->tableName} WHERE tokenable_id = %d ORDER BY created_at DESC",
+			$userId
+		), ARRAY_A);
+
+		return $results ?: [];
 	}
 
+	public function createSingleToken(int $userId, string $name, array $abilities = ['*'], $expiresAt = null): array {
+		global $wpdb;
+
+		// Xóa TẤT CẢ token của user
+		$wpdb->delete($this->tableName, [
+			'tokenable_id' => $userId,
+		], ['%d']);
+
+		$plainToken = bin2hex(random_bytes(40));
+		$hashedToken = hash('sha256', $plainToken);
+
+		$wpdb->insert($this->tableName, [
+			'tokenable_type' => 'User',
+			'tokenable_id' => $userId,
+			'name' => $name,
+			'token' => $hashedToken,
+			'abilities' => json_encode($abilities),
+			'expires_at' => $expiresAt,
+			'created_at' => current_time('mysql'),
+			'updated_at' => current_time('mysql'),
+		]);
+
+		$tokenId = $wpdb->insert_id;
+
+		return [
+			'token' => $wpdb->get_row("SELECT * FROM {$this->tableName} WHERE id = {$tokenId}", ARRAY_A),
+			'plainTextToken' => $plainToken,
+		];
+	}
 }
