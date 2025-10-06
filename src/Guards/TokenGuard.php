@@ -2,8 +2,8 @@
 
 namespace WPSPCORE\Sanctum\Guards;
 
-use WPSPCORE\Sanctum\Database\TokenDatabase;
-use WPSPCORE\Sanctum\Database\TokenRepository;
+use WPSPCORE\Sanctum\Database\DBPersonalAccessToken;
+use WPSPCORE\Sanctum\Database\TokenEloquent;
 use WPSPCORE\Sanctum\Models\PersonalAccessToken;
 
 class TokenGuard {
@@ -11,19 +11,15 @@ class TokenGuard {
 	private $repository;
 	private $currentToken = null;
 
-	public function __construct(bool $useEloquent = true) {
-		if ($useEloquent && class_exists('\WPSPCORE\Database\Eloquent')) {
-			$this->repository = new TokenRepository();
+	public function __construct() {
+		if (class_exists('\WPSPCORE\Database\Eloquent')) {
+			$this->repository = new TokenEloquent();
 		}
 		else {
-			$this->repository = new TokenDatabase();
+			$this->repository = new DBPersonalAccessToken();
 		}
 	}
 
-	/**
-	 * Authenticate via Bearer token
-	 * Returns authenticated user object with token attached
-	 */
 	public function authenticate(string $plainToken) {
 		$token = $this->repository->findByToken($plainToken);
 
@@ -43,22 +39,16 @@ class TokenGuard {
 		}
 
 		// Attach token to user
-		$this->currentToken       = $token;
-		$user->currentAccessToken = $token;
+		$this->currentToken = $token;
+		$user->accessToken  = $token;
 
 		return $user;
 	}
 
-	/**
-	 * Get current token
-	 */
 	public function currentToken() {
 		return $this->currentToken;
 	}
 
-	/**
-	 * Check if token is expired
-	 */
 	private function isExpired($token): bool {
 		$expiresAt = $token['expires_at'] ?? ($token->expires_at ?? null);
 		if (!$expiresAt) return false;
@@ -67,9 +57,6 @@ class TokenGuard {
 		return $expiresTimestamp < time();
 	}
 
-	/**
-	 * Get user by ID
-	 */
 	private function getUserById(int $userId) {
 		// Try Eloquent first
 		if (class_exists('\WPSP\app\Models\UsersModel')) {

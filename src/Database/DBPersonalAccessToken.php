@@ -2,7 +2,7 @@
 
 namespace WPSPCORE\Sanctum\Database;
 
-class TokenDatabase {
+class DBPersonalAccessToken {
 
 	private $tableName;
 

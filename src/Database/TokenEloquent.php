@@ -4,7 +4,7 @@ namespace WPSPCORE\Sanctum\Database;
 
 use WPSP\app\Models\PersonalAccessTokenModel;
 
-class TokenRepository {
+class TokenEloquent {
 
 	public function findByToken(string $plainToken): ?PersonalAccessTokenModel {
 		$hashedToken = hash('sha256', $plainToken);
@@ -52,8 +52,7 @@ class TokenRepository {
 	}
 
 	public function getUserTokens(int $userId) {
-		return PersonalAccessTokenModel::where('tokenable_id', $userId)
-			->orderBy('created_at', 'desc');
+		return PersonalAccessTokenModel::where('tokenable_id', $userId);
 	}
 
 	public function createSingleToken(int $userId, string $name, array $abilities = ['*'], $expiresAt = null): array {
