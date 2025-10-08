@@ -7,11 +7,11 @@ use WPSPCORE\Sanctum\Database\DBPersonalAccessTokens;
 
 trait DBSanctumTokensTrait {
 
-	private function table(): string {
+	private function personalAccessTokensTable(): string {
 		return $this->funcs->_getDBCustomMigrationTablePrefix() . 'personal_access_tokens';
 	}
-	
-	private function personalAccessTokens(): DBPersonalAccessTokens {
+
+	private function DBPersonalAccessTokens(): DBPersonalAccessTokens {
 		return new DBPersonalAccessTokens(
 			$this->funcs->_getMainPath(),
 			$this->funcs->_getRootNamespace(),
@@ -29,20 +29,22 @@ trait DBSanctumTokensTrait {
 	 *
 	 */
 
-	public function createToken(string $name, array $abilities = ['*'], $expiresAt = null) {
+	public function createToken(string $name, array $abilities = ['*'], $expiresAt = null, $checkDuplicate = false) {
 		global $wpdb;
 
 		// Kiểm tra nếu token đã tồn tại theo tên
-		$existingToken = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$this->table()} WHERE tokenable_id = %d AND name = %s LIMIT 1",
-				$this->id(),
-				$name
-			)
-		);
+		if ($checkDuplicate) {
+			$existingToken = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT * FROM {$this->personalAccessTokensTable()} WHERE tokenable_id = %d AND name = %s LIMIT 1",
+					$this->id(),
+					$name
+				)
+			);
 
-		if ($existingToken) {
-			return null;
+			if ($existingToken) {
+				return null;
+			}
 		}
 
 		// Sinh token & refresh token ngẫu nhiên
@@ -65,11 +67,11 @@ trait DBSanctumTokensTrait {
 		$refreshTokenHash = hash('sha256', $plainRefreshToken);
 
 		// Chuẩn hóa expires_at
-		$expiresAt             = $this->normalizeDateTime($expiresAt);
+		$expiresAt             = $this->funcs->_normalizeDateTime($expiresAt);
 		$refreshTokenExpiresAt = $expiresAt->modify('+30 days');
 
 		// Thực hiện insert
-		$wpdb->insert($this->table(), [
+		$wpdb->insert($this->personalAccessTokensTable(), [
 			'tokenable_type'           => 'DBAuthUser',
 			'tokenable_id'             => $this->id(),
 			'name'                     => $name,
@@ -93,7 +95,7 @@ trait DBSanctumTokensTrait {
 	public function tokens() {
 		global $wpdb;
 		$result = $wpdb->get_results($wpdb->prepare(
-			"SELECT * FROM {$this->table()} WHERE tokenable_id = {$this->id()} LIMIT 1",
+			"SELECT * FROM {$this->personalAccessTokensTable()} WHERE tokenable_id = {$this->id()} LIMIT 1",
 		));
 		return $result ?: null;
 	}
@@ -104,8 +106,8 @@ trait DBSanctumTokensTrait {
 			return false;
 		}
 
-		$token = $this->personalAccessTokens()->findByToken($plainToken);
-		
+		$token = $this->DBPersonalAccessTokens()->findByToken($plainToken);
+
 		if (!$token) {
 			return false;
 		}
@@ -137,75 +139,24 @@ trait DBSanctumTokensTrait {
 
 	public function updateTokenLastUsed(int $tokenId): void {
 		global $wpdb;
-		$wpdb->update($this->table(), [
+		$wpdb->update($this->personalAccessTokensTable(), [
 			'last_used_at' => current_time('mysql'),
 		], ['id' => $tokenId]);
 	}
 
 	public function revokeToken(int $tokenId): bool {
 		global $wpdb;
-		return (bool)$wpdb->delete($this->table(), ['id' => $tokenId]);
+		return (bool)$wpdb->delete($this->personalAccessTokensTable(), ['id' => $tokenId]);
 	}
 
 	public function revokeAllTokens(): int {
 		global $wpdb;
-		return (bool)$wpdb->delete($this->table(), ['tokenable_id' => $this->id()]);
+		return (bool)$wpdb->delete($this->personalAccessTokensTable(), ['tokenable_id' => $this->id()]);
 	}
 
 	public function revokeTokenByName(string $name): int {
 		global $wpdb;
-		return (bool)$wpdb->delete($this->table(), ['tokenable_id' => $this->id(), 'name' => $name]);
-	}
-
-	/*
-	 *
-	 */
-
-	public function normalizeDateTime($value): \DateTimeInterface {
-		$tz      = wp_timezone();
-		$now     = new \DateTimeImmutable('now', $tz);
-		$default = $now->modify('+7 days');
-
-		if (empty($value)) {
-			return $default;
-		}
-
-		if ($value instanceof \DateTimeInterface) {
-			return $value;
-		}
-
-		if (is_numeric($value)) {
-			try {
-				return (new \DateTimeImmutable('@' . (int)$value))->setTimezone($tz);
-			} catch (\Exception) {
-				return $default;
-			}
-		}
-
-		// Nếu là chuỗi định dạng ngày hợp lệ
-		try {
-			$parsed = new \DateTimeImmutable($value, $tz);
-			if ($parsed >= $now) {
-				return $parsed;
-			}
-		} catch (\Exception) {
-			// bỏ qua
-		}
-
-		// Nếu là chuỗi kiểu “1 year”, “6 months”, “2 weeks”...
-		try {
-			$interval = date_interval_create_from_date_string($value);
-			if ($interval instanceof \DateInterval) {
-				$future = $now->add($interval);
-				if ($future >= $now) {
-					return $future;
-				}
-			}
-		} catch (\Exception) {
-			// không parse được
-		}
-
-		return $default;
+		return (bool)$wpdb->delete($this->personalAccessTokensTable(), ['tokenable_id' => $this->id(), 'name' => $name]);
 	}
 
 }

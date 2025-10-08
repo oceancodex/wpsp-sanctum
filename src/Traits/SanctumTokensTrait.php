@@ -2,27 +2,25 @@
 
 namespace WPSPCORE\Sanctum\Traits;
 
-use Carbon\Carbon;
-use Carbon\CarbonInterval;
 use Illuminate\Support\Str;
-use WPSP\app\Models\PersonalAccessTokenModel;
-use WPSPCORE\Sanctum\NewAccessToken;
 
 trait SanctumTokensTrait {
 
-	public function findByToken(string $plainToken) {
-		$plainToken  = explode('|', $plainToken);
-		$hashedToken = hash('sha256', $plainToken[1]);
-		return $this->tokens()->where('token', $hashedToken)->first();
+	public function personalAccessTokensModel() {
+		return $this->funcs->_config('sanctum.model_class');
 	}
 
-	public function findByTokenName(string $name) {
-		return $this->tokens()->where('name', $name)->first();
-	}
+	/*
+	 *
+	 */
 
-	public function createToken(string $name, array $abilities = ['*'], $expiresAt = null) {
-		$exitsToken = $this->findByTokenName($name);
-		if (!$exitsToken) {
+	public function createToken(string $name, array $abilities = ['*'], $expiresAt = null, $checkDuplicate = false) {
+		// Kiểm tra nếu token đã tồn tại theo tên
+		if ($checkDuplicate) {
+			$exitsToken = $this->findByTokenName($name);
+		}
+
+		if (!isset($exitsToken) || !$exitsToken) {
 			$plainToken = sprintf(
 				'%s%s%s',
 				$this->funcs->_config('sanctum.token_prefix', ''),
@@ -40,8 +38,8 @@ trait SanctumTokensTrait {
 			$token        = hash('sha256', $plainToken);
 			$refreshToken = hash('sha256', $plainRefreshToken);
 
-			$expiresAt             = $this->normalizeDateTime($expiresAt);
-			$refreshTokenExpiresAt = $expiresAt->copy()->addDays(30);
+			$expiresAt             = $this->funcs->_normalizeDateTime($expiresAt);
+			$refreshTokenExpiresAt = $expiresAt->modify('+30 days');
 
 			$token = $this->tokens()->create([
 				'name'                     => $name,
@@ -63,7 +61,7 @@ trait SanctumTokensTrait {
 	}
 
 	public function tokens() {
-		return $this->morphMany(PersonalAccessTokenModel::class, 'tokenable');
+		return $this->morphMany($this->personalAccessTokensModel(), 'tokenable');
 	}
 
 	public function tokenCan(string $ability): bool {
@@ -85,6 +83,16 @@ trait SanctumTokensTrait {
 	/*
 	 *
 	 */
+
+	public function findByToken(string $plainToken) {
+		$plainToken  = explode('|', $plainToken);
+		$hashedToken = hash('sha256', $plainToken[1]);
+		return $this->tokens()->where('token', $hashedToken)->first();
+	}
+
+	public function findByTokenName(string $name) {
+		return $this->tokens()->where('name', $name)->first();
+	}
 
 	public function updateTokenLastUsed(int $tokenId): void {
 		$this->tokens()->where('id', $tokenId)->update([
@@ -121,55 +129,6 @@ trait SanctumTokensTrait {
 		return $this->tokens()->where('tokenable_id', $userId)
 			->where('name', $name)
 			->delete();
-	}
-
-	/*
-	 *
-	 */
-
-	public function normalizeDateTime($value): \DateTimeInterface {
-		$now     = new \DateTimeImmutable('now', wp_timezone()); // hoặc new \DateTimeImmutable('now')
-		$default = $now->modify('+7 days');
-
-		// Nếu null hoặc rỗng → +7 ngày
-		if (empty($value)) {
-			return $default;
-		}
-
-		// Nếu đã là DateTimeInterface (DateTime, DateTimeImmutable, ...)
-		if ($value instanceof \DateTimeInterface) {
-			return $value;
-		}
-
-		// Nếu là timestamp (số)
-		if (is_numeric($value)) {
-			try {
-				return (new \DateTimeImmutable('@' . (int)$value))->setTimezone(wp_timezone());
-			}
-			catch (\Exception) {
-				return $default;
-			}
-		}
-
-		// Nếu là chuỗi định dạng ngày chuẩn (YYYY-MM-DD, v.v.)
-		try {
-			$parsed = new \DateTimeImmutable($value, wp_timezone());
-			if ($parsed >= $now) {
-				return $parsed;
-			}
-		}
-		catch (\Exception) {
-			// bỏ qua, thử kiểu khác
-		}
-
-		// Nếu là chuỗi tự nhiên như “1 year”, “6 months”, “2 weeks”, v.v.
-		$timestamp = strtotime($value, $now->getTimestamp());
-		if ($timestamp !== false && $timestamp >= $now->getTimestamp()) {
-			return (new \DateTimeImmutable('@' . $timestamp))->setTimezone(wp_timezone());
-		}
-
-		// Nếu không parse được → mặc định +7 ngày
-		return $default;
 	}
 
 }

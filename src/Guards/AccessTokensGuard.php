@@ -5,7 +5,7 @@ namespace WPSPCORE\Sanctum\Guards;
 use WPSPCORE\Auth\Base\BaseGuard;
 use WPSPCORE\Auth\Models\DBAuthUser;
 use WPSPCORE\Sanctum\Database\DBPersonalAccessTokens;
-use WPSPCORE\Sanctum\Models\DBPersonalAccessTokensModel;
+use WPSPCORE\Sanctum\Database\DBPersonalAccessTokensModel;
 
 class AccessTokensGuard extends BaseGuard {
 
@@ -70,7 +70,7 @@ class AccessTokensGuard extends BaseGuard {
 				$this->funcs->_getRootNamespace(),
 				$this->funcs->_getPrefixEnv(),
 				[
-					'raw_user'   => $user,
+					'auth_user'    => $user,
 					'access_token' => $this->accessToken,
 					'provider'     => $this->customProperties['provider'],
 					'session_key'  => $this->customProperties['session_key'],

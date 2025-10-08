@@ -13,18 +13,21 @@ class SessionsGuard extends BaseGuard {
 		$id = $this->id();
 		if (!$id) return null;
 
-		$this->rawUser = $this->provider->retrieveById($id);
-		if (!$this->rawUser) return null;
+		$this->authUser = $this->provider->retrieveById($id);
+		if (!$this->authUser) return null;
 
-		if ($this->rawUser instanceof \stdClass) {
-			if (!($this->DBAuthUser instanceof DBAuthUser) || $this->DBAuthUser->rawUser !== $this->rawUser) {
+		if ($this->authUser instanceof \stdClass) {
+			if (!($this->DBAuthUser instanceof DBAuthUser) || $this->DBAuthUser->authUser !== $this->authUser) {
 				$this->DBAuthUser = new DBAuthUser(
 					$this->funcs->_getMainPath(),
 					$this->funcs->_getRootNamespace(),
 					$this->funcs->_getPrefixEnv(),
 					[
-						'guard_name' => $this->guardName,
-						'raw_user'   => $this->rawUser,
+						'auth_user'    => $this->authUser,
+						'provider'     => $this->provider,
+						'session_key'  => $this->sessionKey,
+						'guard_name'   => $this->guardName,
+						'guard_config' => $this->guardConfig,
 					]
 				);
 			}
@@ -33,11 +36,11 @@ class SessionsGuard extends BaseGuard {
 		}
 		else {
 			// Add guard name.
-			$this->rawUser->setAttribute('guard_name', $this->guardName);
-//			$this->rawUser->setAttribute('access_token', '');
+			$this->authUser->setAttribute('guard_name', $this->guardName);
+//			$this->authUser->setAttribute('access_token', '');
 		}
 
-		return $this->rawUser;
+		return $this->authUser;
 	}
 
 }
