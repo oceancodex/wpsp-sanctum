@@ -3,37 +3,38 @@
 namespace WPSPCORE\Sanctum\Guards;
 
 use WPSPCORE\Auth\Base\BaseGuard;
+use WPSPCORE\Auth\Drivers\Database\DBAuthUser;
 use WPSPCORE\Sanctum\Database\DBPersonalAccessToken;
 
 class AccessTokensGuard extends BaseGuard {
 
-	private   $currentToken;
-	private   $modelClass;
 	protected $currentAccessToken;
 
-	public function afterInstanceConstruct() {
-		parent::afterInstanceConstruct();
-		$this->modelClass = $this->funcs->_config('sanctum.model');
-	}
+	private ?DBAuthUser $DBAuthUser = null;
 
 	public function attempt($credentials = []) {
-		$plainToken = $credentials['plain_token'] ?? '';
+		$plainToken = $credentials['plain_token'] ?? $this->funcs->_getBearerToken();
 
 		if (!$plainToken) {
 			return false;
 		}
 
-		$plainToken = explode('|', $plainToken);
-		$tokenId    = $plainToken[0] ?? 0;
-		$tokenRaw   = $plainToken[1] ?? '';
+		$plainTokenArr = explode('|', $plainToken);
+		$tokenId    = $plainTokenArr[0] ?? 0;
+		$tokenRaw   = $plainTokenArr[1] ?? '';
 
-		if ($this->modelClass) {
-			$hashedToken              = hash('sha256', $plainToken[1]);
-			$this->currentAccessToken = $this->modelClass::where('token', $hashedToken)->where('id', $tokenId)->first();
+		$personalAccessTokenModel = $this->funcs->_config('sanctum.model_class');
+		if (class_exists($personalAccessTokenModel) && !$this->provider->customProperties['table']) {
+			$hashedToken = hash('sha256', $tokenRaw);
+			$this->currentAccessToken = $personalAccessTokenModel::where('token', $hashedToken)->where('id', $tokenId)->first();
 		}
 		else {
-			// TODO: Chưa xử lý lấy user từ token nếu không có model class.
-			$this->currentAccessToken = (new DBPersonalAccessToken)->findByToken($tokenRaw);
+			$this->currentAccessToken = (new DBPersonalAccessToken(
+				$this->funcs->_getMainPath(),
+				$this->funcs->_getRootNamespace(),
+				$this->funcs->_getPrefixEnv(),
+				[]
+			))->findByToken($plainToken);
 		}
 
 		return $this;
@@ -41,8 +42,12 @@ class AccessTokensGuard extends BaseGuard {
 
 	public function user() {
 		if (!$this->currentAccessToken) return null;
-		// TODO: Chưa xử lý lấy user từ token nếu không có model class.
-		return $this->currentAccessToken->tokenable()->first();
+		if (!$this->currentAccessToken instanceof DBPersonalAccessToken) {
+			return $this->currentAccessToken->user();
+		}
+		else {
+			return $this->currentAccessToken->tokenable()->first();
+		}
 	}
 
 }

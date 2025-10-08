@@ -2,9 +2,7 @@
 
 namespace WPSPCORE\Sanctum\Traits;
 
-use DateTimeInterface;
 use Illuminate\Support\Str;
-use WPSPCORE\Sanctum\NewAccessToken;
 
 trait DBSanctumTokensTrait {
 
@@ -13,11 +11,12 @@ trait DBSanctumTokensTrait {
 	}
 
 	public function findByToken(string $plainToken) {
+		echo '<pre>'; print_r($this->id()); echo '</pre>'; die();
 		global $wpdb;
 		$plainToken  = explode('|', $plainToken);
 		$hashedToken = hash('sha256', $plainToken[1]);
 		$result      = $wpdb->get_row($wpdb->prepare(
-			"SELECT * FROM {$this->table()} WHERE tokenable_id = {$this->id()} WHERE token = %s LIMIT 1",
+			"SELECT * FROM {$this->table()} WHERE tokenable_id = {$this->id()} AND token = %s LIMIT 1",
 			$hashedToken
 		));
 		return $result ?: null;
@@ -26,7 +25,7 @@ trait DBSanctumTokensTrait {
 	public function findByTokenName(string $name) {
 		global $wpdb;
 		$result = $wpdb->get_row($wpdb->prepare(
-			"SELECT * FROM {$this->table()} WHERE tokenable_id = {$this->id()} WHERE name = %s LIMIT 1",
+			"SELECT * FROM {$this->table()} WHERE tokenable_id = {$this->id()} AND name = %s LIMIT 1",
 			$name
 		));
 		return $result ?: null;
@@ -35,29 +34,64 @@ trait DBSanctumTokensTrait {
 	public function createToken(string $name, array $abilities = ['*'], $expiresAt = null) {
 		global $wpdb;
 
+		// Kiểm tra nếu token đã tồn tại theo tên
+		$existingToken = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$this->table()} WHERE tokenable_id = %d AND name = %s LIMIT 1",
+				$this->id(),
+				$name
+			)
+		);
+
+		if ($existingToken) {
+			return null;
+		}
+
+		// Sinh token & refresh token ngẫu nhiên
 		$plainToken = sprintf(
 			'%s%s%s',
 			$this->funcs->_config('sanctum.token_prefix', ''),
-			$tokenEntropy = Str::random(40),
+			$tokenEntropy = Str::random(64),
 			hash('crc32b', $tokenEntropy)
 		);
 
+		$plainRefreshToken = sprintf(
+			'%s%s%s',
+			$this->funcs->_config('sanctum.token_prefix', ''),
+			$refreshEntropy = Str::random(64),
+			hash('crc32b', $refreshEntropy)
+		);
+
+		// Băm token để lưu trữ
+		$tokenHash        = hash('sha256', $plainToken);
+		$refreshTokenHash = hash('sha256', $plainRefreshToken);
+
+		// Chuẩn hóa expires_at
+		$expiresAt             = $this->normalizeDateTime($expiresAt);
+		$refreshTokenExpiresAt = $expiresAt->modify('+30 days');
+
+		// Thực hiện insert
 		$wpdb->insert($this->table(), [
-			'tokenable_type' => 'DBAuthUser',
-			'tokenable_id'   => $this->id(),
-			'name'           => $name,
-			'token'          => hash('sha256', $plainToken),
-			'abilities'      => json_encode($abilities),
-			'expires_at'     => $expiresAt,
-			'created_at'     => current_time('mysql'),
-			'updated_at'     => current_time('mysql'),
+			'tokenable_type'           => 'DBAuthUser',
+			'tokenable_id'             => $this->id(),
+			'name'                     => $name,
+			'token'                    => $tokenHash,
+			'refresh_token'            => $refreshTokenHash,
+			'abilities'                => json_encode($abilities),
+			'expires_at'               => $expiresAt,
+			'refresh_token_expires_at' => $refreshTokenExpiresAt,
+			'created_at'               => current_time('mysql'),
+			'updated_at'               => current_time('mysql'),
 		]);
 
 		$tokenId = $wpdb->insert_id;
 
-		return new NewAccessToken($tokenId . '|' . $plainToken, $plainToken);
-
+		return [
+			'token'         => $tokenId . '|' . $plainToken,
+			'refresh_token' => $plainRefreshToken,
+		];
 	}
+
 
 	public function tokens() {
 		global $wpdb;
@@ -127,6 +161,55 @@ trait DBSanctumTokensTrait {
 	public function revokeTokenByName(string $name): int {
 		global $wpdb;
 		return (bool)$wpdb->delete($this->table(), ['tokenable_id' => $this->id(), 'name' => $name]);
+	}
+
+	/*
+	 *
+	 */
+
+	public function normalizeDateTime($value): \DateTimeInterface {
+		$now     = new \DateTimeImmutable('now', wp_timezone()); // hoặc new \DateTimeImmutable('now')
+		$default = $now->modify('+7 days');
+
+		// Nếu null hoặc rỗng → +7 ngày
+		if (empty($value)) {
+			return $default;
+		}
+
+		// Nếu đã là DateTimeInterface (DateTime, DateTimeImmutable, ...)
+		if ($value instanceof \DateTimeInterface) {
+			return $value;
+		}
+
+		// Nếu là timestamp (số)
+		if (is_numeric($value)) {
+			try {
+				return (new \DateTimeImmutable('@' . (int)$value))->setTimezone(wp_timezone());
+			}
+			catch (\Exception) {
+				return $default;
+			}
+		}
+
+		// Nếu là chuỗi định dạng ngày chuẩn (YYYY-MM-DD, v.v.)
+		try {
+			$parsed = new \DateTimeImmutable($value, wp_timezone());
+			if ($parsed >= $now) {
+				return $parsed;
+			}
+		}
+		catch (\Exception) {
+			// bỏ qua, thử kiểu khác
+		}
+
+		// Nếu là chuỗi tự nhiên như “1 year”, “6 months”, “2 weeks”, v.v.
+		$timestamp = strtotime($value, $now->getTimestamp());
+		if ($timestamp !== false && $timestamp >= $now->getTimestamp()) {
+			return (new \DateTimeImmutable('@' . $timestamp))->setTimezone(wp_timezone());
+		}
+
+		// Nếu không parse được → mặc định +7 ngày
+		return $default;
 	}
 
 }
