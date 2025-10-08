@@ -10,8 +10,8 @@ class Sanctum extends BaseInstances {
 
 	private $tokenGuard;
 	private $sessionGuard;
-	private $currentGuard      = null;
-	private $authenticatedUser = null;
+	private $currentGuard = null;
+	private $authUser     = null;
 
 	/*
 	 *
@@ -45,17 +45,17 @@ class Sanctum extends BaseInstances {
 	 */
 
 	public function user() {
-		if ($this->authenticatedUser === null) {
+		if ($this->authUser === null) {
 			$this->attempt();
 		}
-		return $this->authenticatedUser;
+		return $this->authUser;
 	}
 
 	public function check(): bool {
-		if ($this->authenticatedUser === null) {
+		if ($this->authUser === null) {
 			$this->attempt();
 		}
-		return $this->authenticatedUser !== null;
+		return $this->authUser !== null;
 	}
 
 	/*
@@ -65,9 +65,9 @@ class Sanctum extends BaseInstances {
 	public function attempt(array $credentials = []) {
 		$plainToken = $this->funcs->_getBearerToken();
 		if ($plainToken) {
-			$this->currentGuard      = 'token';
-			$this->tokenGuard        = $this->tokenGuard->attempt(['plain_token' => $plainToken]);
-			$this->authenticatedUser = $this->tokenGuard ? $this->tokenGuard->user() : null;
+			$this->currentGuard = 'token';
+			$this->tokenGuard   = $this->tokenGuard->attempt(['plain_token' => $plainToken]);
+			$this->authUser     = $this->tokenGuard ? $this->tokenGuard->user() : null;
 			return $this->tokenGuard;
 		}
 
@@ -77,9 +77,9 @@ class Sanctum extends BaseInstances {
 			$credentials['login']    = $this->request->get('login');
 			$credentials['password'] = $this->request->get('password');
 		}
-		$this->currentGuard      = 'session';
-		$this->sessionGuard      = $this->sessionGuard->attempt($credentials);
-		$this->authenticatedUser = $this->sessionGuard ? $this->sessionGuard->user() : null;
+		$this->currentGuard = 'session';
+		$this->sessionGuard = $this->sessionGuard->attempt($credentials);
+		$this->authUser     = $this->sessionGuard ? $this->sessionGuard->user() : null;
 		return $this->sessionGuard;
 	}
 

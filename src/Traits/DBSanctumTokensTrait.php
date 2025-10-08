@@ -3,33 +3,31 @@
 namespace WPSPCORE\Sanctum\Traits;
 
 use Illuminate\Support\Str;
+use WPSPCORE\Sanctum\Database\DBPersonalAccessTokens;
 
 trait DBSanctumTokensTrait {
 
-	public function table(): string {
+	private function table(): string {
 		return $this->funcs->_getDBCustomMigrationTablePrefix() . 'personal_access_tokens';
 	}
-
-	public function findByToken(string $plainToken) {
-		echo '<pre>'; print_r($this->id()); echo '</pre>'; die();
-		global $wpdb;
-		$plainToken  = explode('|', $plainToken);
-		$hashedToken = hash('sha256', $plainToken[1]);
-		$result      = $wpdb->get_row($wpdb->prepare(
-			"SELECT * FROM {$this->table()} WHERE tokenable_id = {$this->id()} AND token = %s LIMIT 1",
-			$hashedToken
-		));
-		return $result ?: null;
+	
+	private function personalAccessTokens(): DBPersonalAccessTokens {
+		return new DBPersonalAccessTokens(
+			$this->funcs->_getMainPath(),
+			$this->funcs->_getRootNamespace(),
+			$this->funcs->_getPrefixEnv(),
+			[
+				'provider'     => $this->customProperties['provider'],
+				'session_key'  => $this->customProperties['session_key'],
+				'guard_name'   => $this->customProperties['guard_name'],
+				'guard_config' => $this->customProperties['guard_config'],
+			]
+		);
 	}
 
-	public function findByTokenName(string $name) {
-		global $wpdb;
-		$result = $wpdb->get_row($wpdb->prepare(
-			"SELECT * FROM {$this->table()} WHERE tokenable_id = {$this->id()} AND name = %s LIMIT 1",
-			$name
-		));
-		return $result ?: null;
-	}
+	/*
+	 *
+	 */
 
 	public function createToken(string $name, array $abilities = ['*'], $expiresAt = null) {
 		global $wpdb;
@@ -78,8 +76,8 @@ trait DBSanctumTokensTrait {
 			'token'                    => $tokenHash,
 			'refresh_token'            => $refreshTokenHash,
 			'abilities'                => json_encode($abilities),
-			'expires_at'               => $expiresAt,
-			'refresh_token_expires_at' => $refreshTokenExpiresAt,
+			'expires_at'               => $expiresAt->format('Y-m-d H:i:s'),
+			'refresh_token_expires_at' => $refreshTokenExpiresAt->format('Y-m-d H:i:s'),
 			'created_at'               => current_time('mysql'),
 			'updated_at'               => current_time('mysql'),
 		]);
@@ -91,7 +89,6 @@ trait DBSanctumTokensTrait {
 			'refresh_token' => $plainRefreshToken,
 		];
 	}
-
 
 	public function tokens() {
 		global $wpdb;
@@ -107,7 +104,8 @@ trait DBSanctumTokensTrait {
 			return false;
 		}
 
-		$token = $this->findByToken($plainToken);
+		$token = $this->personalAccessTokens()->findByToken($plainToken);
+		
 		if (!$token) {
 			return false;
 		}
@@ -144,10 +142,6 @@ trait DBSanctumTokensTrait {
 		], ['id' => $tokenId]);
 	}
 
-	public function revokeCurrentToken(): bool {
-		return true;
-	}
-
 	public function revokeToken(int $tokenId): bool {
 		global $wpdb;
 		return (bool)$wpdb->delete($this->table(), ['id' => $tokenId]);
@@ -168,47 +162,49 @@ trait DBSanctumTokensTrait {
 	 */
 
 	public function normalizeDateTime($value): \DateTimeInterface {
-		$now     = new \DateTimeImmutable('now', wp_timezone()); // hoặc new \DateTimeImmutable('now')
+		$tz      = wp_timezone();
+		$now     = new \DateTimeImmutable('now', $tz);
 		$default = $now->modify('+7 days');
 
-		// Nếu null hoặc rỗng → +7 ngày
 		if (empty($value)) {
 			return $default;
 		}
 
-		// Nếu đã là DateTimeInterface (DateTime, DateTimeImmutable, ...)
 		if ($value instanceof \DateTimeInterface) {
 			return $value;
 		}
 
-		// Nếu là timestamp (số)
 		if (is_numeric($value)) {
 			try {
-				return (new \DateTimeImmutable('@' . (int)$value))->setTimezone(wp_timezone());
-			}
-			catch (\Exception) {
+				return (new \DateTimeImmutable('@' . (int)$value))->setTimezone($tz);
+			} catch (\Exception) {
 				return $default;
 			}
 		}
 
-		// Nếu là chuỗi định dạng ngày chuẩn (YYYY-MM-DD, v.v.)
+		// Nếu là chuỗi định dạng ngày hợp lệ
 		try {
-			$parsed = new \DateTimeImmutable($value, wp_timezone());
+			$parsed = new \DateTimeImmutable($value, $tz);
 			if ($parsed >= $now) {
 				return $parsed;
 			}
-		}
-		catch (\Exception) {
-			// bỏ qua, thử kiểu khác
-		}
-
-		// Nếu là chuỗi tự nhiên như “1 year”, “6 months”, “2 weeks”, v.v.
-		$timestamp = strtotime($value, $now->getTimestamp());
-		if ($timestamp !== false && $timestamp >= $now->getTimestamp()) {
-			return (new \DateTimeImmutable('@' . $timestamp))->setTimezone(wp_timezone());
+		} catch (\Exception) {
+			// bỏ qua
 		}
 
-		// Nếu không parse được → mặc định +7 ngày
+		// Nếu là chuỗi kiểu “1 year”, “6 months”, “2 weeks”...
+		try {
+			$interval = date_interval_create_from_date_string($value);
+			if ($interval instanceof \DateInterval) {
+				$future = $now->add($interval);
+				if ($future >= $now) {
+					return $future;
+				}
+			}
+		} catch (\Exception) {
+			// không parse được
+		}
+
 		return $default;
 	}
 

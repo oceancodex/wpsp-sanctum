@@ -3,7 +3,7 @@
 namespace WPSPCORE\Sanctum\Guards;
 
 use WPSPCORE\Auth\Base\BaseGuard;
-use WPSPCORE\Auth\Drivers\Database\DBAuthUser;
+use WPSPCORE\Auth\Models\DBAuthUser;
 
 class SessionsGuard extends BaseGuard {
 
