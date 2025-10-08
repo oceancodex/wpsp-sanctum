@@ -9,17 +9,17 @@ use WPSPCORE\Sanctum\NewAccessToken;
 
 trait SanctumTokensTrait {
 
-	public function findByToken(string $plainToken): ?PersonalAccessTokenModel {
+	public function findByToken(string $plainToken) {
 		$plainToken  = explode('|', $plainToken);
 		$hashedToken = hash('sha256', $plainToken[1]);
 		return $this->tokens()->where('token', $hashedToken)->first();
 	}
 
-	public function findByTokenName(string $name): ?PersonalAccessTokenModel {
+	public function findByTokenName(string $name) {
 		return $this->tokens()->where('name', $name)->first();
 	}
 
-	public function createToken(string $name, array $abilities = ['*'], ?DateTimeInterface $expiresAt = null) {
+	public function createToken(string $name, array $abilities = ['*'], $expiresAt = null) {
 		$exitsToken = $this->findByTokenName($name);
 		if (!$exitsToken) {
 			$plainToken = sprintf(
@@ -36,7 +36,7 @@ trait SanctumTokensTrait {
 				'expires_at' => $expiresAt,
 			]);
 
-			return new NewAccessToken($token, $token->getKey() . '|' . $plainToken);
+			return new NewAccessToken($token->getKey() . '|' . $plainToken, $plainToken);
 		}
 		else {
 			return null;
