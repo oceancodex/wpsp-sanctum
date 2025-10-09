@@ -3,11 +3,11 @@
 namespace WPSPCORE\Sanctum\Guards;
 
 use WPSPCORE\Auth\Base\BaseGuard;
-use WPSPCORE\Auth\Models\DBAuthUser;
+use WPSPCORE\Auth\Models\DBAuthUserModel;
 
 class SessionsGuard extends BaseGuard {
 
-	private ?DBAuthUser $DBAuthUser = null;
+	private ?DBAuthUserModel $DBAuthUser = null;
 
 	public function user() {
 		$id = $this->id();
@@ -17,8 +17,8 @@ class SessionsGuard extends BaseGuard {
 		if (!$this->authUser) return null;
 
 		if ($this->authUser instanceof \stdClass) {
-			if (!($this->DBAuthUser instanceof DBAuthUser) || $this->DBAuthUser->authUser !== $this->authUser) {
-				$this->DBAuthUser = new DBAuthUser(
+			if (!($this->DBAuthUser instanceof DBAuthUserModel) || $this->DBAuthUser->authUser !== $this->authUser) {
+				$this->DBAuthUser = new DBAuthUserModel(
 					$this->funcs->_getMainPath(),
 					$this->funcs->_getRootNamespace(),
 					$this->funcs->_getPrefixEnv(),

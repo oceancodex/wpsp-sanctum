@@ -72,7 +72,7 @@ trait DBSanctumTokensTrait {
 
 		// Thực hiện insert
 		$wpdb->insert($this->personalAccessTokensTable(), [
-			'tokenable_type'           => 'DBAuthUser',
+			'tokenable_type'           => 'DBAuthUserModel',
 			'tokenable_id'             => $this->id(),
 			'name'                     => $name,
 			'token'                    => $tokenHash,

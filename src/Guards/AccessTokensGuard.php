@@ -3,7 +3,7 @@
 namespace WPSPCORE\Sanctum\Guards;
 
 use WPSPCORE\Auth\Base\BaseGuard;
-use WPSPCORE\Auth\Models\DBAuthUser;
+use WPSPCORE\Auth\Models\DBAuthUserModel;
 use WPSPCORE\Sanctum\Database\DBPersonalAccessTokens;
 use WPSPCORE\Sanctum\Database\DBPersonalAccessTokensModel;
 
@@ -65,7 +65,7 @@ class AccessTokensGuard extends BaseGuard {
 		if (!$this->accessToken) return null;
 		if ($this->accessToken instanceof DBPersonalAccessTokensModel) {
 			$user = $this->accessToken->user();
-			return new DBAuthUser(
+			return new DBAuthUserModel(
 				$this->funcs->_getMainPath(),
 				$this->funcs->_getRootNamespace(),
 				$this->funcs->_getPrefixEnv(),
