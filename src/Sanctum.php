@@ -72,7 +72,7 @@ class Sanctum extends BaseInstances {
 		}
 
 		// Try session
-		if (!$credentials) {
+		if (empty($credentials)) {
 			$credentials             = [];
 			$credentials['login']    = $this->request->get('login');
 			$credentials['password'] = $this->request->get('password');
