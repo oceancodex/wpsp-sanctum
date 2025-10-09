@@ -63,6 +63,7 @@ class Sanctum extends BaseInstances {
 	 */
 
 	public function attempt(array $credentials = []) {
+		// Try token first.
 		$plainToken = $this->funcs->_getBearerToken();
 		if ($plainToken) {
 			$this->currentGuard = 'token';
@@ -71,7 +72,7 @@ class Sanctum extends BaseInstances {
 			return $this->tokenGuard;
 		}
 
-		// Try session
+		// Try session.
 		if (empty($credentials)) {
 			$credentials             = [];
 			$credentials['login']    = $this->request->get('login');

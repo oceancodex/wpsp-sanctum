@@ -7,40 +7,61 @@ use WPSPCORE\Auth\Models\DBAuthUserModel;
 
 class SessionsGuard extends BaseGuard {
 
-	private ?DBAuthUserModel $DBAuthUser = null;
+	public function attempt(array $credentials = []) {
+		if (empty($credentials)) {
+			$credentials             = [];
+			$credentials['login']    = $this->request->get('login');
+			$credentials['password'] = $this->request->get('password');
+		}
+
+		$user = $this->provider->retrieveByCredentials($credentials);
+
+		if (!$user) return false;
+		$this->authUser = $this->prepareUser($user, DBAuthUserModel::class);
+
+		foreach ($this->provider->dbPasswordFields as $dbPasswordField) {
+			foreach ($this->provider->formPasswordFields as $formPasswordField) {
+				$given  = $credentials[$formPasswordField] ?? null;
+				$hashed = $user->{$dbPasswordField} ?? null;
+				if ($given !== null && $hashed && wp_check_password($given, $hashed)) {
+					$id = null;
+					foreach ($this->provider->dbIdFields as $dbIdField) {
+						try {
+							$id = $user->{$dbIdField} ?? null;
+						}
+						catch (\Exception $e) {
+							continue;
+						}
+						if ($id) break;
+					}
+					if (!$id) return false;
+					$_SESSION[$this->sessionKey] = $id;
+					return $this;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/*
+	 *
+	 */
+
+	public function id(): ?int {
+		return !empty($_SESSION[$this->sessionKey]) ? (int)$_SESSION[$this->sessionKey] : null;
+	}
 
 	public function user() {
-		$id = $this->id();
-		if (!$id) return null;
-
-		$this->authUser = $this->provider->retrieveById($id);
-		if (!$this->authUser) return null;
-
-		if ($this->authUser instanceof \stdClass) {
-			if (!($this->DBAuthUser instanceof DBAuthUserModel) || $this->DBAuthUser->authUser !== $this->authUser) {
-				$this->DBAuthUser = new DBAuthUserModel(
-					$this->funcs->_getMainPath(),
-					$this->funcs->_getRootNamespace(),
-					$this->funcs->_getPrefixEnv(),
-					[
-						'auth_user'    => $this->authUser,
-						'provider'     => $this->provider,
-						'session_key'  => $this->sessionKey,
-						'guard_name'   => $this->guardName,
-						'guard_config' => $this->guardConfig,
-					]
-				);
-			}
-
-			return $this->DBAuthUser;
-		}
-		else {
-			// Add guard name.
-			$this->authUser->setAttribute('guard_name', $this->guardName);
-//			$this->authUser->setAttribute('access_token', '');
-		}
-
+		if (!$this->id()) return null;
+		$user = $this->provider->retrieveById($this->id());
+		if (!$user) return null;
+		$this->authUser = $this->prepareUser($user, DBAuthUserModel::class);
 		return $this->authUser;
+	}
+
+	public function check(): bool {
+		return $this->id() !== null;
 	}
 
 }

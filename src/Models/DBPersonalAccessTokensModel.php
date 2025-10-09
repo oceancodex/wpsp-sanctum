@@ -1,6 +1,6 @@
 <?php
 
-namespace WPSPCORE\Sanctum\Database;
+namespace WPSPCORE\Sanctum\Models;
 
 use WPSPCORE\Base\BaseInstances;
 

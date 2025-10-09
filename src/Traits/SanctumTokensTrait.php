@@ -84,16 +84,6 @@ trait SanctumTokensTrait {
 	 *
 	 */
 
-	public function findByToken(string $plainToken) {
-		$plainToken  = explode('|', $plainToken);
-		$hashedToken = hash('sha256', $plainToken[1]);
-		return $this->tokens()->where('token', $hashedToken)->first();
-	}
-
-	public function findByTokenName(string $name) {
-		return $this->tokens()->where('name', $name)->first();
-	}
-
 	public function updateTokenLastUsed(int $tokenId): void {
 		$this->tokens()->where('id', $tokenId)->update([
 			'last_used_at' => current_time('mysql'),
@@ -101,18 +91,17 @@ trait SanctumTokensTrait {
 	}
 
 	public function revokeCurrentToken(): bool {
-		if (!$this->accessToken) {
+		$plainToken = $this->funcs->_getBearerToken();
+		if (!$plainToken) {
+			return false;
+		}
+		$token = $this->findByToken($plainToken);
+
+		if (!$token) {
 			return false;
 		}
 
-		$tokenId = $this->accessToken['id']
-			?? ($this->accessToken->id ?? null);
-
-		if (!$tokenId) {
-			return false;
-		}
-
-		return $this->tokens()->delete($tokenId) > 0;
+		return $this->tokens()->delete($token->id ?? $token->ID ?? 0) > 0;
 	}
 
 	public function revokeToken(int $tokenId): bool {
@@ -129,6 +118,20 @@ trait SanctumTokensTrait {
 		return $this->tokens()->where('tokenable_id', $userId)
 			->where('name', $name)
 			->delete();
+	}
+
+	/*
+	 *
+	 */
+
+	public function findByToken(string $plainToken) {
+		$plainToken  = explode('|', $plainToken);
+		$hashedToken = hash('sha256', $plainToken[1]);
+		return $this->tokens()->where('token', $hashedToken)->first();
+	}
+
+	public function findByTokenName(string $name) {
+		return $this->tokens()->where('name', $name)->first();
 	}
 
 }

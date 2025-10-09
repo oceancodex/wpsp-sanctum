@@ -13,7 +13,7 @@ class DBPersonalAccessTokens extends BaseInstances {
 	 */
 
 	public function afterInstanceConstruct() {
-		$this->table = $this->funcs->_getDBCustomMigrationTablePrefix() . 'personal_access_tokens';
+		$this->table = $this->funcs->_getDBCustomMigrationTableName('personal_access_tokens');
 	}
 
 	/*
@@ -29,6 +29,18 @@ class DBPersonalAccessTokens extends BaseInstances {
 			$hashedToken
 		));
 		return $result ?: null;
+	}
+
+	public function findByTokenName(string $name, $userId) {
+		global $wpdb;
+		$existingToken = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$this->table} WHERE tokenable_id = %d AND name = %s LIMIT 1",
+				$userId,
+				$name
+			)
+		);
+		return $existingToken ?: null;
 	}
 
 }

@@ -7,11 +7,11 @@ use WPSPCORE\Sanctum\Database\DBPersonalAccessTokens;
 
 trait DBSanctumTokensTrait {
 
-	private function personalAccessTokensTable(): string {
-		return $this->funcs->_getDBCustomMigrationTablePrefix() . 'personal_access_tokens';
+	public function personalAccessTokensTable(): string {
+		return $this->funcs->_getDBCustomMigrationTableName('personal_access_tokens');
 	}
 
-	private function DBPersonalAccessTokens(): DBPersonalAccessTokens {
+	public function DBPersonalAccessTokens(): DBPersonalAccessTokens {
 		return new DBPersonalAccessTokens(
 			$this->funcs->_getMainPath(),
 			$this->funcs->_getRootNamespace(),
@@ -34,13 +34,7 @@ trait DBSanctumTokensTrait {
 
 		// Kiểm tra nếu token đã tồn tại theo tên
 		if ($checkDuplicate) {
-			$existingToken = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT * FROM {$this->personalAccessTokensTable()} WHERE tokenable_id = %d AND name = %s LIMIT 1",
-					$this->id(),
-					$name
-				)
-			);
+			$existingToken = $this->DBPersonalAccessTokens()->findByTokenName($name, $this->id());
 
 			if ($existingToken) {
 				return null;
@@ -142,6 +136,20 @@ trait DBSanctumTokensTrait {
 		$wpdb->update($this->personalAccessTokensTable(), [
 			'last_used_at' => current_time('mysql'),
 		], ['id' => $tokenId]);
+	}
+
+	public function revokeCurrentToken(): bool {
+		$plainToken = $this->funcs->_getBearerToken();
+
+		if (!$plainToken) {
+			return false;
+		}
+
+		$plainToken  = explode('|', $plainToken);
+		$hashedToken = hash('sha256', $plainToken[1]);
+
+		global $wpdb;
+		return (bool)$wpdb->delete($this->personalAccessTokensTable(), ['token' => $hashedToken]);
 	}
 
 	public function revokeToken(int $tokenId): bool {
