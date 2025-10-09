@@ -7,7 +7,7 @@ use WPSPCORE\Auth\Models\DBAuthUserModel;
 use WPSPCORE\Sanctum\Database\DBPersonalAccessTokens;
 use WPSPCORE\Sanctum\Database\DBPersonalAccessTokensModel;
 
-class AccessTokensGuard extends BaseGuard {
+class TokensGuard extends BaseGuard {
 
 	public $accessToken;
 
@@ -32,7 +32,7 @@ class AccessTokensGuard extends BaseGuard {
 			$this->accessToken = $personalAccessTokenModel::where('token', $hashedToken)->where('id', $tokenId)->first();
 		}
 		else {
-			$model             = new DBPersonalAccessTokens(
+			$DBPersonalAccessTokens = new DBPersonalAccessTokens(
 				$this->funcs->_getMainPath(),
 				$this->funcs->_getRootNamespace(),
 				$this->funcs->_getPrefixEnv(),
@@ -43,13 +43,13 @@ class AccessTokensGuard extends BaseGuard {
 					'guard_config' => $this->customProperties['guard_config'],
 				]
 			);
-			$this->accessToken = $model->findByToken($plainToken);
+			$accessToken = $DBPersonalAccessTokens->findByToken($plainToken);
 			$this->accessToken = new DBPersonalAccessTokensModel(
 				$this->funcs->_getMainPath(),
 				$this->funcs->_getRootNamespace(),
 				$this->funcs->_getPrefixEnv(),
 				[
-					'access_token' => $this->accessToken,
+					'access_token' => $accessToken,
 					'provider'     => $this->customProperties['provider'],
 					'session_key'  => $this->customProperties['session_key'],
 					'guard_name'   => $this->customProperties['guard_name'],
@@ -63,8 +63,10 @@ class AccessTokensGuard extends BaseGuard {
 
 	public function user() {
 		if (!$this->accessToken) return null;
+
 		if ($this->accessToken instanceof DBPersonalAccessTokensModel) {
 			$user = $this->accessToken->user();
+
 			return new DBAuthUserModel(
 				$this->funcs->_getMainPath(),
 				$this->funcs->_getRootNamespace(),

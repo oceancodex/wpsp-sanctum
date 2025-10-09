@@ -3,7 +3,7 @@
 namespace WPSPCORE\Sanctum;
 
 use WPSPCORE\Base\BaseInstances;
-use WPSPCORE\Sanctum\Guards\AccessTokensGuard;
+use WPSPCORE\Sanctum\Guards\TokensGuard;
 use WPSPCORE\Sanctum\Guards\SessionsGuard;
 
 class Sanctum extends BaseInstances {
@@ -18,7 +18,7 @@ class Sanctum extends BaseInstances {
 	 */
 
 	public function afterInstanceConstruct(): void {
-		$this->tokenGuard   = new AccessTokensGuard(
+		$this->tokenGuard   = new TokensGuard(
 			$this->mainPath,
 			$this->rootNamespace,
 			$this->prefixEnv,
@@ -95,7 +95,7 @@ class Sanctum extends BaseInstances {
 		return $this->currentGuard === 'session';
 	}
 
-	public function getTokenGuard(): AccessTokensGuard {
+	public function getTokenGuard(): TokensGuard {
 		return $this->tokenGuard;
 	}
 
