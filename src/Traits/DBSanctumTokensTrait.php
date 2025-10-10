@@ -64,9 +64,11 @@ trait DBSanctumTokensTrait {
 		$expiresAt             = $this->funcs->_normalizeDateTime($expiresAt);
 		$refreshTokenExpiresAt = $expiresAt->modify('+30 days');
 
+		$providerTable = $this->customProperties['provider']['table'] ?? null;
+
 		// Thực hiện insert
 		$wpdb->insert($this->personalAccessTokensTable(), [
-			'tokenable_type'           => 'DBAuthUserModel',
+			'tokenable_type'           => 'DBAuthUserModel' . ($providerTable ? "-$providerTable" : ''),
 			'tokenable_id'             => $this->id(),
 			'name'                     => $name,
 			'token'                    => $tokenHash,
