@@ -64,7 +64,7 @@ trait DBSanctumTokensTrait {
 		$expiresAt             = $this->funcs->_normalizeDateTime($expiresAt);
 		$refreshTokenExpiresAt = $expiresAt->modify('+30 days');
 
-		$providerTable = $this->customProperties['provider']['table'] ?? null;
+		$providerTable = $this->customProperties['provider']->table ?? null;
 
 		// Thực hiện insert
 		$wpdb->insert($this->personalAccessTokensTable(), [
