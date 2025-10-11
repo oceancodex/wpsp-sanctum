@@ -17,7 +17,7 @@ class Sanctum extends BaseInstances {
 	 *
 	 */
 
-	public function afterInstanceConstruct(): void {
+	public function afterInstanceConstruct() {
 		$this->tokenGuard   = new TokensGuard(
 			$this->mainPath,
 			$this->rootNamespace,
@@ -51,7 +51,7 @@ class Sanctum extends BaseInstances {
 		return $this->authUser;
 	}
 
-	public function check(): bool {
+	public function check() {
 		if ($this->authUser === null) {
 			$this->attempt();
 		}
@@ -62,7 +62,7 @@ class Sanctum extends BaseInstances {
 	 *
 	 */
 
-	public function attempt(array $credentials = []) {
+	public function attempt($credentials = []) {
 		// Try token first.
 		$plainToken = $this->funcs->_getBearerToken();
 		if ($plainToken) {
@@ -88,19 +88,25 @@ class Sanctum extends BaseInstances {
 	 *
 	 */
 
-	public function usingTokenGuard(): bool {
+	public function usingTokenGuard() {
 		return $this->currentGuard === 'token';
 	}
 
-	public function usingSessionGuard(): bool {
+	public function usingSessionGuard() {
 		return $this->currentGuard === 'session';
 	}
 
-	public function getTokenGuard(): TokensGuard {
+	/**
+	 * @return TokensGuard
+	 */
+	public function getTokenGuard() {
 		return $this->tokenGuard;
 	}
 
-	public function getSessionGuard(): SessionsGuard {
+	/**
+	 * @return SessionsGuard
+	 */
+	public function getSessionGuard() {
 		return $this->sessionGuard;
 	}
 

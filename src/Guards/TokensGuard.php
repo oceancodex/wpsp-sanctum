@@ -76,7 +76,7 @@ class TokensGuard extends BaseGuard {
 	/**
 	 * Lấy ID của token.
 	 */
-	public function id(): ?int {
+	public function id() {
 		return $this->accessToken->id ?? $this->accessToken->ID ?? null;
 	}
 
@@ -97,7 +97,7 @@ class TokensGuard extends BaseGuard {
 	/**
 	 * Kiểm tra token có tồn tại hay không.
 	 */
-	public function check(): bool {
+	public function check() {
 		// Cố gắng xác thực lại một lần nữa, nếu "check" được gọi độc lập.
 		// Tức là dùng luôn auth('sanctum')->check() thay vì $auth = auth('sanctum')->attempt() > $auth->check().
 		if (!$this->accessToken) {
