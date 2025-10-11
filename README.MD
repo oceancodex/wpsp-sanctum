@@ -1,1 +1,1 @@
-# WordPress Starter Plugin - Updater
+# WordPress Starter Plugin - Sanctum
