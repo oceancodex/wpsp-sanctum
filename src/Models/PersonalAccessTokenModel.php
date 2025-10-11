@@ -20,7 +20,7 @@ class PersonalAccessTokenModel extends Model {
 //	protected $appends;
 //	protected $attributeCastCache;
 //	protected $attributes;
-	protected $casts = [
+	protected $casts      = [
 		'abilities'                => 'json',
 		'last_used_at'             => 'datetime',
 		'expires_at'               => 'datetime',
@@ -31,7 +31,7 @@ class PersonalAccessTokenModel extends Model {
 //	protected $dateFormat;
 //	protected $dispatchesEvents;
 //	protected $escapeWhenCastingToString;
-	protected $fillable = [
+	protected $fillable   = [
 		'name',
 		'token',
 		'refresh_token',
@@ -40,8 +40,8 @@ class PersonalAccessTokenModel extends Model {
 		'refresh_token_expires_at',
 	];
 //	protected $forceDeleting;
-	protected $guarded = [];
-	protected $hidden  = [
+	protected $guarded    = [];
+	protected $hidden     = [
 		'token',
 	];
 //	protected $keyType;
@@ -61,17 +61,20 @@ class PersonalAccessTokenModel extends Model {
 //	public    $usesUniqueIds;
 //	public    $wasRecentlyCreated;
 
-//	protected static array $observers = [
+//	protected static $observers = [
 //		\WPSP\app\Observers\PersonalAccessTokenModelObserver::class,
 //	];
 
-//	public function __construct(array $attributes = []) {
+//	public function __construct($attributes = []) {
 //		$this->getConnection()->setTablePrefix('wp_wpsp_');
 //		$this->setConnection('wordpress');
 //		parent::__construct($attributes);
 //	}
 
-	public function tokenable(): \Illuminate\Database\Eloquent\Relations\MorphTo {
+	/**
+	 * @return \Illuminate\Database\Eloquent\Relations\MorphTo
+	 */
+	public function tokenable() {
 		return $this->morphTo('tokenable');
 	}
 
@@ -79,7 +82,7 @@ class PersonalAccessTokenModel extends Model {
 	 *
 	 */
 
-	public function can(string $ability): bool {
+	public function can($ability) {
 		// Nếu expires_at là string, ép về Carbon
 		$expiresAt = $this->expires_at instanceof \DateTimeInterface
 			? $this->expires_at
@@ -96,7 +99,7 @@ class PersonalAccessTokenModel extends Model {
 		return in_array('*', $abilities, true) || in_array($ability, $abilities, true);
 	}
 
-	public function cant($ability): bool {
+	public function cant($ability) {
 		return !$this->can($ability);
 	}
 

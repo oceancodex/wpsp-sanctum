@@ -20,7 +20,7 @@ class DBPersonalAccessTokens extends BaseInstances {
 	 *
 	 */
 
-	public function findByToken(string $plainToken) {
+	public function findByToken($plainToken) {
 		global $wpdb;
 		$plainToken  = explode('|', $plainToken);
 		$hashedToken = hash('sha256', $plainToken[1]);
@@ -31,7 +31,7 @@ class DBPersonalAccessTokens extends BaseInstances {
 		return $result ?: null;
 	}
 
-	public function findByTokenName(string $name, $userId) {
+	public function findByTokenName($name, $userId) {
 		global $wpdb;
 		$existingToken = $wpdb->get_row(
 			$wpdb->prepare(

@@ -7,11 +7,14 @@ use WPSPCORE\Sanctum\Database\DBPersonalAccessTokens;
 
 trait DBSanctumTokensTrait {
 
-	public function personalAccessTokensTable(): string {
+	public function personalAccessTokensTable() {
 		return $this->funcs->_getDBCustomMigrationTableName('personal_access_tokens');
 	}
 
-	public function DBPersonalAccessTokens(): DBPersonalAccessTokens {
+	/**
+	 * @return DBPersonalAccessTokens
+	 */
+	public function DBPersonalAccessTokens() {
 		return new DBPersonalAccessTokens(
 			$this->funcs->_getMainPath(),
 			$this->funcs->_getRootNamespace(),
@@ -29,7 +32,7 @@ trait DBSanctumTokensTrait {
 	 *
 	 */
 
-	public function createToken(string $name, array $abilities = ['*'], $expiresAt = null, $checkDuplicate = false) {
+	public function createToken($name, $abilities = ['*'], $expiresAt = null, $checkDuplicate = false) {
 		global $wpdb;
 
 		// Kiểm tra nếu token đã tồn tại theo tên
@@ -96,7 +99,7 @@ trait DBSanctumTokensTrait {
 		return $result ?: null;
 	}
 
-	public function tokenCan(string $ability): bool {
+	public function tokenCan($ability) {
 		$plainToken = $this->funcs->_getBearerToken();
 		if (!$plainToken) {
 			return false;
@@ -125,7 +128,7 @@ trait DBSanctumTokensTrait {
 		return in_array($ability, $abilities);
 	}
 
-	public function tokenCant(string $ability): bool {
+	public function tokenCant($ability) {
 		return !$this->tokenCan($ability);
 	}
 
@@ -133,14 +136,14 @@ trait DBSanctumTokensTrait {
 	 *
 	 */
 
-	public function updateTokenLastUsed(int $tokenId): void {
+	public function updateTokenLastUsed($tokenId) {
 		global $wpdb;
 		$wpdb->update($this->personalAccessTokensTable(), [
 			'last_used_at' => current_time('mysql'),
 		], ['id' => $tokenId]);
 	}
 
-	public function revokeCurrentToken(): bool {
+	public function revokeCurrentToken() {
 		$plainToken = $this->funcs->_getBearerToken();
 
 		if (!$plainToken) {
@@ -151,22 +154,22 @@ trait DBSanctumTokensTrait {
 		$hashedToken = hash('sha256', $plainToken[1]);
 
 		global $wpdb;
-		return (bool)$wpdb->delete($this->personalAccessTokensTable(), ['token' => $hashedToken]);
+		return $wpdb->delete($this->personalAccessTokensTable(), ['token' => $hashedToken]);
 	}
 
-	public function revokeToken(int $tokenId): bool {
+	public function revokeToken($tokenId) {
 		global $wpdb;
-		return (bool)$wpdb->delete($this->personalAccessTokensTable(), ['id' => $tokenId]);
+		return $wpdb->delete($this->personalAccessTokensTable(), ['id' => $tokenId]);
 	}
 
-	public function revokeAllTokens(): int {
+	public function revokeAllTokens() {
 		global $wpdb;
-		return (bool)$wpdb->delete($this->personalAccessTokensTable(), ['tokenable_id' => $this->id()]);
+		return $wpdb->delete($this->personalAccessTokensTable(), ['tokenable_id' => $this->id()]);
 	}
 
-	public function revokeTokenByName(string $name): int {
+	public function revokeTokenByName($name) {
 		global $wpdb;
-		return (bool)$wpdb->delete($this->personalAccessTokensTable(), ['tokenable_id' => $this->id(), 'name' => $name]);
+		return $wpdb->delete($this->personalAccessTokensTable(), ['tokenable_id' => $this->id(), 'name' => $name]);
 	}
 
 }

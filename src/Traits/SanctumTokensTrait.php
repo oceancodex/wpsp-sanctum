@@ -14,7 +14,7 @@ trait SanctumTokensTrait {
 	 *
 	 */
 
-	public function createToken(string $name, array $abilities = ['*'], $expiresAt = null, $checkDuplicate = false) {
+	public function createToken($name, $abilities = ['*'], $expiresAt = null, $checkDuplicate = false) {
 		// Kiểm tra nếu token đã tồn tại theo tên
 		if ($checkDuplicate) {
 			$exitsToken = $this->findByTokenName($name);
@@ -64,7 +64,7 @@ trait SanctumTokensTrait {
 		return $this->morphMany($this->personalAccessTokensModel(), 'tokenable');
 	}
 
-	public function tokenCan(string $ability): bool {
+	public function tokenCan($ability) {
 		$plainToken = $this->funcs->_getBearerToken();
 		if (!$plainToken) {
 			return false;
@@ -76,7 +76,7 @@ trait SanctumTokensTrait {
 		return $token->can($ability);
 	}
 
-	public function tokenCant(string $ability): bool {
+	public function tokenCant($ability) {
 		return !$this->tokenCan($ability);
 	}
 
@@ -84,13 +84,13 @@ trait SanctumTokensTrait {
 	 *
 	 */
 
-	public function updateTokenLastUsed(int $tokenId): void {
+	public function updateTokenLastUsed($tokenId) {
 		$this->tokens()->where('id', $tokenId)->update([
 			'last_used_at' => current_time('mysql'),
 		]);
 	}
 
-	public function revokeCurrentToken(): bool {
+	public function revokeCurrentToken() {
 		$plainToken = $this->funcs->_getBearerToken();
 		if (!$plainToken) {
 			return false;
@@ -104,16 +104,16 @@ trait SanctumTokensTrait {
 		return $this->tokens()->delete($token->id ?? $token->ID ?? 0) > 0;
 	}
 
-	public function revokeToken(int $tokenId): bool {
+	public function revokeToken($tokenId) {
 		return $this->tokens()->delete($tokenId) > 0;
 	}
 
-	public function revokeAllTokens(): int {
+	public function revokeAllTokens() {
 		$userId = $this->id ?? $this->ID;
 		return $this->tokens()->where('tokenable_id', $userId)->delete();
 	}
 
-	public function revokeTokenByName(string $name): int {
+	public function revokeTokenByName($name) {
 		$userId = $this->id ?? $this->ID;
 		return $this->tokens()->where('tokenable_id', $userId)
 			->where('name', $name)
@@ -124,13 +124,13 @@ trait SanctumTokensTrait {
 	 *
 	 */
 
-	public function findByToken(string $plainToken) {
+	public function findByToken( $plainToken) {
 		$plainToken  = explode('|', $plainToken);
 		$hashedToken = hash('sha256', $plainToken[1]);
 		return $this->tokens()->where('token', $hashedToken)->first();
 	}
 
-	public function findByTokenName(string $name) {
+	public function findByTokenName($name) {
 		return $this->tokens()->where('name', $name)->first();
 	}
 
