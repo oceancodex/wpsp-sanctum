@@ -5,7 +5,7 @@ namespace WPSPCORE\Sanctum\Traits;
 use Illuminate\Support\Str;
 use WPSPCORE\Sanctum\Database\DBPersonalAccessTokens;
 
-trait DBSanctumTokensTrait {
+trait DBUserSanctumTokensTrait {
 
 	public function personalAccessTokensTable() {
 		return $this->funcs->_getDBCustomMigrationTableName('personal_access_tokens');
