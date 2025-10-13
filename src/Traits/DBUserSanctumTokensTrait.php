@@ -20,10 +20,10 @@ trait DBUserSanctumTokensTrait {
 			$this->funcs->_getRootNamespace(),
 			$this->funcs->_getPrefixEnv(),
 			[
-				'provider'     => $this->customProperties['provider'],
-				'session_key'  => $this->customProperties['session_key'],
-				'guard_name'   => $this->customProperties['guard_name'],
-				'guard_config' => $this->customProperties['guard_config'],
+				'provider'     => $this->extraParams['provider'],
+				'session_key'  => $this->extraParams['session_key'],
+				'guard_name'   => $this->extraParams['guard_name'],
+				'guard_config' => $this->extraParams['guard_config'],
 			]
 		);
 	}
@@ -67,7 +67,7 @@ trait DBUserSanctumTokensTrait {
 		$expiresAt             = $this->funcs->_normalizeDateTime($expiresAt);
 		$refreshTokenExpiresAt = $expiresAt->modify('+30 days');
 
-		$providerTable = $this->customProperties['provider']->table ?? null;
+		$providerTable = $this->extraParams['provider']->table ?? null;
 
 		// Thực hiện insert
 		$wpdb->insert($this->personalAccessTokensTable(), [
