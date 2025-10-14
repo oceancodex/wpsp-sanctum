@@ -6,7 +6,8 @@
 	],
 	"license": "MIT",
 	"require": {
-		"php": "^8.0"
+		"php": "^8.0",
+		"oceancodex/wpsp-auth": "^8.0"
 	},
 	"config": {
 		"sort-packages": true
