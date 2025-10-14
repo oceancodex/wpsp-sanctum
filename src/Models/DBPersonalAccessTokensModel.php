@@ -17,11 +17,11 @@ class DBPersonalAccessTokensModel extends BaseInstances {
 	 */
 
 	public function afterInstanceConstruct() {
-		$this->accessToken = $this->customProperties['access_token'];
-		$this->provider    = $this->customProperties['provider'];
-		$this->sessionKey  = $this->customProperties['session_key'];
-		$this->guardName   = $this->customProperties['guard_name'];
-		$this->guardConfig = $this->customProperties['guard_config'];
+		$this->accessToken = $this->extraParams['access_token'];
+		$this->provider    = $this->extraParams['provider'];
+		$this->sessionKey  = $this->extraParams['session_key'];
+		$this->guardName   = $this->extraParams['guard_name'];
+		$this->guardConfig = $this->extraParams['guard_config'];
 	}
 
 	/*
