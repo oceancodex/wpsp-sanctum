@@ -33,7 +33,7 @@ class TokensGuard extends BaseGuard {
 		$tokenRaw      = $plainTokenArr[1] ?? '';
 
 		$personalAccessTokenModel = $this->funcs->_config('sanctum.model_class');
-		if (class_exists($personalAccessTokenModel) && !$this->provider->customProperties['table']) {
+		if (class_exists($personalAccessTokenModel) && !$this->provider->extraParams['table']) {
 			$hashedToken       = hash('sha256', $tokenRaw);
 			$this->accessToken = $personalAccessTokenModel::where('token', $hashedToken)->where('id', $tokenId)->first();
 		}
@@ -43,10 +43,10 @@ class TokensGuard extends BaseGuard {
 				$this->funcs->_getRootNamespace(),
 				$this->funcs->_getPrefixEnv(),
 				[
-					'provider'     => $this->customProperties['provider'],
-					'session_key'  => $this->customProperties['session_key'],
-					'guard_name'   => $this->customProperties['guard_name'],
-					'guard_config' => $this->customProperties['guard_config'],
+					'provider'     => $this->extraParams['provider'],
+					'session_key'  => $this->extraParams['session_key'],
+					'guard_name'   => $this->extraParams['guard_name'],
+					'guard_config' => $this->extraParams['guard_config'],
 				]
 			);
 
@@ -58,10 +58,10 @@ class TokensGuard extends BaseGuard {
 				$this->funcs->_getPrefixEnv(),
 				[
 					'access_token' => $accessToken,
-					'provider'     => $this->customProperties['provider'],
-					'session_key'  => $this->customProperties['session_key'],
-					'guard_name'   => $this->customProperties['guard_name'],
-					'guard_config' => $this->customProperties['guard_config'],
+					'provider'     => $this->extraParams['provider'],
+					'session_key'  => $this->extraParams['session_key'],
+					'guard_name'   => $this->extraParams['guard_name'],
+					'guard_config' => $this->extraParams['guard_config'],
 				]
 			);
 		}

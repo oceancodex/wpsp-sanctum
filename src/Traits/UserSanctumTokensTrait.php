@@ -4,7 +4,7 @@ namespace WPSPCORE\Sanctum\Traits;
 
 use Illuminate\Support\Str;
 
-trait SanctumTokensTrait {
+trait UserSanctumTokensTrait {
 
 	public function personalAccessTokensModel() {
 		return $this->funcs->_config('sanctum.model_class');

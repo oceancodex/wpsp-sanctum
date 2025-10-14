@@ -23,20 +23,20 @@ class Sanctum extends BaseInstances {
 			$this->rootNamespace,
 			$this->prefixEnv,
 			[
-				'provider'     => $this->customProperties['provider'],
-				'session_key'  => $this->customProperties['session_key'],
-				'guard_name'   => $this->customProperties['guard_name'],
-				'guard_config' => $this->customProperties['guard_config'],
+				'provider'     => $this->extraParams['provider'],
+				'session_key'  => $this->extraParams['session_key'],
+				'guard_name'   => $this->extraParams['guard_name'],
+				'guard_config' => $this->extraParams['guard_config'],
 			]);
 		$this->sessionGuard = new SessionsGuard(
 			$this->mainPath,
 			$this->rootNamespace,
 			$this->prefixEnv,
 			[
-				'provider'     => $this->customProperties['provider'],
-				'session_key'  => $this->customProperties['session_key'],
-				'guard_name'   => $this->customProperties['guard_name'],
-				'guard_config' => $this->customProperties['guard_config'],
+				'provider'     => $this->extraParams['provider'],
+				'session_key'  => $this->extraParams['session_key'],
+				'guard_name'   => $this->extraParams['guard_name'],
+				'guard_config' => $this->extraParams['guard_config'],
 			]);
 	}
 
