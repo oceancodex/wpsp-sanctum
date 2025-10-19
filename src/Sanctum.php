@@ -17,7 +17,7 @@ class Sanctum extends BaseInstances {
 	 *
 	 */
 
-	public function afterInstanceConstruct() {
+	public function afterConstruct() {
 		$this->tokenGuard   = new TokensGuard(
 			$this->mainPath,
 			$this->rootNamespace,
