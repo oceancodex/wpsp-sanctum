@@ -29,7 +29,7 @@ class SessionsGuard extends BaseGuard {
 						try {
 							$id = $user->{$dbIdField} ?? null;
 						}
-						catch (\Exception $e) {
+						catch (\Throwable $e) {
 							continue;
 						}
 						if ($id) break;
